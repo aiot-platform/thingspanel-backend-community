@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"project/internal/dal"
+	"project/internal/devicelog"
 	"project/internal/diagnostics"
 	"project/internal/processor"
 
@@ -98,6 +99,7 @@ func (h *Handler) handle(ctx context.Context, msg *Message, dataType processor.D
 
 			// ✨ 更新日志为失败
 			h.updateLogStatus(msg.MessageID, msg.DeviceID, "2", fmt.Sprintf("encode failed: %v", err), msg.Type) // ✨ 传递 device_id
+			h.recordDeviceLog(msg, devicelog.StatusFailed, fmt.Sprintf("encode failed: %v", err))
 			return
 		}
 
@@ -119,6 +121,7 @@ func (h *Handler) handle(ctx context.Context, msg *Message, dataType processor.D
 
 			// ✨ 更新日志为失败
 			h.updateLogStatus(msg.MessageID, msg.DeviceID, "2", fmt.Sprintf("script execution failed: %v", encodeOutput.Error), msg.Type) // ✨ 传递 device_id
+			h.recordDeviceLog(msg, devicelog.StatusFailed, fmt.Sprintf("script execution failed: %v", encodeOutput.Error))
 			return
 		}
 
@@ -152,11 +155,13 @@ func (h *Handler) handle(ctx context.Context, msg *Message, dataType processor.D
 
 		// ✨ 更新日志为失败
 		h.updateLogStatus(msg.MessageID, msg.DeviceID, "2", fmt.Sprintf("publish failed: %v", err), msg.Type) // ✨ 传递 device_id
+		h.recordDeviceLog(msg, devicelog.StatusFailed, fmt.Sprintf("publish failed: %v", err))
 		return
 	}
 
 	// 4. 发送成功
 	h.updateLogStatus(msg.MessageID, msg.DeviceID, "1", "", msg.Type) // ✨ 传递 device_id
+	h.recordDeviceLog(msg, devicelog.StatusOK, "")
 
 	// 5. 成功日志
 	h.logger.WithFields(logrus.Fields{

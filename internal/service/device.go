@@ -2239,6 +2239,57 @@ func (*Device) GetDeviceStatusHistory(req *model.GetDeviceStatusHistoryReq, u *u
 	return result, nil
 }
 
+// GetDeviceLogs 检索设备统一日志（device_log）
+// 租户侧固定查本租户；系统管理员（无租户）必须显式指定 tenant_id。
+func (*Device) GetDeviceLogs(req *model.GetDeviceLogReq, u *utils.UserClaims) (map[string]interface{}, error) {
+	tenantID := u.TenantID
+	if u.Authority == dal.SYS_ADMIN {
+		if req.TenantID == "" {
+			return nil, errcode.NewWithMessage(errcode.CodeParamError, "tenant_id is required")
+		}
+		tenantID = req.TenantID
+	}
+	total, list, err := dal.GetDeviceLogByPage(req, tenantID)
+	if err != nil {
+		return nil, errcode.WithData(errcode.CodeDBError, map[string]interface{}{
+			"sql_error": err.Error(),
+		})
+	}
+	for _, item := range list {
+		if item.PayloadText != nil {
+			item.Payload = json.RawMessage(*item.PayloadText)
+		}
+	}
+	return map[string]interface{}{
+		"total": total,
+		"list":  list,
+	}, nil
+}
+
+// GetDeviceLogTenants 设备日志查询-租户下拉（仅系统管理员）
+func (*Device) GetDeviceLogTenants(u *utils.UserClaims) ([]*model.DeviceLogTenantOption, error) {
+	if u.Authority != dal.SYS_ADMIN {
+		return nil, errcode.New(errcode.CodeOpDenied)
+	}
+	list, err := dal.GetDeviceLogTenants()
+	if err != nil {
+		return nil, errcode.WithData(errcode.CodeDBError, map[string]interface{}{"sql_error": err.Error()})
+	}
+	return list, nil
+}
+
+// GetDeviceLogDevices 设备日志查询-设备下拉（仅系统管理员）
+func (*Device) GetDeviceLogDevices(req *model.GetDeviceLogDevicesReq, u *utils.UserClaims) ([]*model.DeviceLogDeviceOption, error) {
+	if u.Authority != dal.SYS_ADMIN {
+		return nil, errcode.New(errcode.CodeOpDenied)
+	}
+	list, err := dal.GetDeviceLogDevices(req.TenantID, req.Keyword, 50)
+	if err != nil {
+		return nil, errcode.WithData(errcode.CodeDBError, map[string]interface{}{"sql_error": err.Error()})
+	}
+	return list, nil
+}
+
 // isValidDeviceID 校验设备ID格式（只校验长度和基本字符）
 func isValidDeviceID(id string) bool {
 	// 只校验长度

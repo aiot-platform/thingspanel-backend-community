@@ -8,6 +8,7 @@ import (
 
 	"project/initialize"
 	"project/internal/dal"
+	"project/internal/devicelog"
 	"project/internal/diagnostics"
 	"project/internal/model"
 	"project/internal/processor"
@@ -304,6 +305,17 @@ func (f *TelemetryUplink) processSubGateways(parentID string, subGatewayData map
 func (f *TelemetryUplink) processDirectDeviceMessage(device *model.Device, payload []byte, originalMsg *DeviceMessage) {
 	// 1. 心跳刷新(最优先,确保设备活跃性)
 	f.refreshHeartbeat(device)
+
+	// 1.5 设备统一日志（非阻塞；网关消息已拆分，按子设备各记一条）
+	devicelog.Record(devicelog.Entry{
+		DeviceID:  device.ID,
+		TenantID:  device.TenantID,
+		MsgType:   devicelog.TypeTelemetry,
+		Direction: devicelog.DirectionUp,
+		MessageID: metadataString(originalMsg, "message_id"),
+		Status:    devicelog.StatusOK,
+		Payload:   payload,
+	})
 
 	// 2. 数据转发（同步执行）
 	// if err := publish.ForwardTelemetryMessage(device.ID, payload); err != nil {

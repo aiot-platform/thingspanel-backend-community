@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 
+	"project/internal/devicelog"
 	"project/internal/query"
 
 	"github.com/sirupsen/logrus"
@@ -84,6 +85,26 @@ func (f *ResponseUplink) processMessage(msg *DeviceMessage) {
 
 	// 2. 解析响应数据
 	responseData, success := f.parseResponse(msg.Payload)
+
+	// 2.5 设备统一日志（tenant_id 由 devicelog 写库时按 device_id 补齐）
+	logType := devicelog.TypeCommandResponse
+	if msg.Type == MessageTypeAttributeSetResponse || msg.Type == MessageTypeGatewayAttributeSetResponse {
+		logType = devicelog.TypeAttributeSetResponse
+	}
+	logStatus, logErr := devicelog.StatusOK, ""
+	if !success {
+		logStatus, logErr = devicelog.StatusFailed, responseData
+	}
+	devicelog.Record(devicelog.Entry{
+		DeviceID:  msg.DeviceID,
+		TenantID:  msg.TenantID,
+		MsgType:   logType,
+		Direction: devicelog.DirectionUp,
+		MessageID: messageID,
+		Status:    logStatus,
+		Error:     logErr,
+		Payload:   msg.Payload,
+	})
 
 	// 3. 根据消息类型更新对应日志表
 	switch msg.Type {

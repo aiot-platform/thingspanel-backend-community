@@ -8,6 +8,7 @@ import (
 
 	"project/initialize"
 	"project/internal/dal"
+	"project/internal/devicelog"
 	"project/internal/diagnostics"
 	"project/internal/model"
 	"project/internal/processor"
@@ -309,6 +310,17 @@ func (f *EventUplink) processDirectDeviceEvent(device *model.Device, eventInfo *
 		}).Error("Failed to marshal event params")
 		return
 	}
+
+	// 2.5 设备统一日志（非阻塞）
+	devicelog.Record(devicelog.Entry{
+		DeviceID:  device.ID,
+		TenantID:  device.TenantID,
+		MsgType:   devicelog.TypeEvent,
+		Direction: devicelog.DirectionUp,
+		MessageID: metadataString(originalMsg, "message_id"),
+		Status:    devicelog.StatusOK,
+		Payload:   paramsJSON,
+	})
 
 	// 3. 发送到 Storage（通过channel）
 	f.storageInput <- &storage.Message{

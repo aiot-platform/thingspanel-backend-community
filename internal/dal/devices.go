@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"project/internal/devicelog"
 	model "project/internal/model"
 	query "project/internal/query"
 	global "project/pkg/global"
@@ -153,6 +154,16 @@ func UpdateDeviceStatus(deviceId string, status int16) (bool, error) {
 			}).Warn("Failed to save device status history")
 		}
 	}()
+
+	// 5. 设备统一日志：上下线（所有上下线变更都经过这里，含业务消息触发的自动上线）
+	// status 列不填，上线/下线看 payload：{"status":1} 上线，{"status":0} 下线
+	devicelog.Record(devicelog.Entry{
+		DeviceID:  deviceId,
+		TenantID:  tenantID,
+		MsgType:   devicelog.TypeStatus,
+		Direction: devicelog.DirectionUp,
+		Payload:   []byte(fmt.Sprintf(`{"status":%d}`, status)),
+	})
 
 	return true, nil
 }

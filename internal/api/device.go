@@ -317,9 +317,14 @@ func (*DeviceApi) MarketRefresh(c *gin.Context) {
 	var req struct {
 		RefreshToken string `json:"refresh_token" binding:"required"`
 	}
-	if !BindAndValidate(c, &req) { return }
+	if !BindAndValidate(c, &req) {
+		return
+	}
 	loginRsp, err := service.NewMarketClient().Refresh(c, req.RefreshToken)
-	if err != nil { c.Error(errcode.NewWithMessage(errcode.CodeSystemError, err.Error())); return }
+	if err != nil {
+		c.Error(errcode.NewWithMessage(errcode.CodeSystemError, err.Error()))
+		return
+	}
 	c.Set("data", loginRsp)
 }
 
@@ -951,6 +956,50 @@ func (*DeviceApi) GetDeviceStatusHistory(c *gin.Context) {
 	}
 	userClaims := c.MustGet("claims").(*utils.UserClaims)
 	data, err := service.GroupApp.Device.GetDeviceStatusHistory(&req, userClaims)
+	if err != nil {
+		c.Error(err)
+		return
+	}
+	c.Set("data", data)
+}
+
+// GetDeviceLogs 检索设备统一日志（上下行报文与上下线）
+// @Router   /api/v1/device/log [get]
+func (*DeviceApi) GetDeviceLogs(c *gin.Context) {
+	var req model.GetDeviceLogReq
+	if !BindAndValidate(c, &req) {
+		return
+	}
+	userClaims := c.MustGet("claims").(*utils.UserClaims)
+	data, err := service.GroupApp.Device.GetDeviceLogs(&req, userClaims)
+	if err != nil {
+		c.Error(err)
+		return
+	}
+	c.Set("data", data)
+}
+
+// GetDeviceLogTenants 设备日志查询-租户下拉（仅系统管理员）
+// @Router   /api/v1/device/log/tenants [get]
+func (*DeviceApi) GetDeviceLogTenants(c *gin.Context) {
+	userClaims := c.MustGet("claims").(*utils.UserClaims)
+	data, err := service.GroupApp.Device.GetDeviceLogTenants(userClaims)
+	if err != nil {
+		c.Error(err)
+		return
+	}
+	c.Set("data", data)
+}
+
+// GetDeviceLogDevices 设备日志查询-设备下拉（仅系统管理员）
+// @Router   /api/v1/device/log/devices [get]
+func (*DeviceApi) GetDeviceLogDevices(c *gin.Context) {
+	var req model.GetDeviceLogDevicesReq
+	if !BindAndValidate(c, &req) {
+		return
+	}
+	userClaims := c.MustGet("claims").(*utils.UserClaims)
+	data, err := service.GroupApp.Device.GetDeviceLogDevices(&req, userClaims)
 	if err != nil {
 		c.Error(err)
 		return

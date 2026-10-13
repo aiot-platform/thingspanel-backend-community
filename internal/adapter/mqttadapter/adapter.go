@@ -190,6 +190,7 @@ func (a *Adapter) HandleEventMessage(payload []byte, topic string) error {
 			"device_id":       device.ID,
 			"topic":           topic,
 			"source_protocol": "mqtt",
+			"message_id":      messageID, // 供 device_log 关联
 		},
 	}
 
@@ -278,6 +279,7 @@ func (a *Adapter) HandleAttributeMessage(payload []byte, topic string) error {
 			"device_id":       device.ID,
 			"topic":           topic,
 			"source_protocol": "mqtt",
+			"message_id":      messageID, // 供 device_log 关联
 		},
 	}
 

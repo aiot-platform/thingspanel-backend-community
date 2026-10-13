@@ -49,6 +49,7 @@ func main() {
 		app.WithRedis(),
 
 		// 服务
+		app.WithDeviceLogService(), // 0. 设备统一日志（最先启动、最后停止）
 		app.WithStorageService(),   // 1. Storage
 		app.WithFlowService(),      // 2. Flow
 		app.WithHeartbeatMonitor(), // 3. Heartbeat

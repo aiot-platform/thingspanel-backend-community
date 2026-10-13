@@ -94,6 +94,12 @@ func (*Device) InitDevice(Router *gin.RouterGroup) {
 		// 设备状态历史记录
 		deviceapi.GET("/status/history", api.Controllers.DeviceApi.GetDeviceStatusHistory)
 
+		// 设备统一日志（device_log：上下行报文与上下线）
+		deviceapi.GET("/log", api.Controllers.DeviceApi.GetDeviceLogs)
+		// 系统管理-设备日志查询：租户/设备下拉（仅系统管理员）
+		deviceapi.GET("/log/tenants", api.Controllers.DeviceApi.GetDeviceLogTenants)
+		deviceapi.GET("/log/devices", api.Controllers.DeviceApi.GetDeviceLogDevices)
+
 		// 主题转换规则
 		topicMappingApi := deviceapi.Group("topic-mappings")
 		{

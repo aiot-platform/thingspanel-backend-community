@@ -8,6 +8,7 @@ import (
 
 	"project/initialize"
 	"project/internal/dal"
+	"project/internal/devicelog"
 	"project/internal/diagnostics"
 	"project/internal/model"
 	"project/internal/processor"
@@ -315,6 +316,17 @@ func (f *AttributeUplink) processDirectDeviceMessage(device *model.Device, paylo
 		triggerParam = append(triggerParam, key)
 		triggerValues[key] = value
 	}
+
+	// 3.5 设备统一日志（非阻塞）
+	devicelog.Record(devicelog.Entry{
+		DeviceID:  device.ID,
+		TenantID:  device.TenantID,
+		MsgType:   devicelog.TypeAttribute,
+		Direction: devicelog.DirectionUp,
+		MessageID: metadataString(originalMsg, "message_id"),
+		Status:    devicelog.StatusOK,
+		Payload:   payload,
+	})
 
 	// 4. 发送到 Storage（通过channel）
 	f.storageInput <- &storage.Message{
