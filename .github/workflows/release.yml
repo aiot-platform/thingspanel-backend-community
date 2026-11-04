@@ -1,0 +1,31 @@
+name: Publish Community Release
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Existing published release tag, e.g. v1.3.0-rc.1
+        required: true
+permissions:
+  contents: write
+  packages: write
+concurrency:
+  group: community-release-${{ github.event.release.tag_name || inputs.version }}
+  cancel-in-progress: false
+jobs:
+  assets:
+    uses: ./.github/workflows/build-release.yml
+    with:
+      tag: ${{ github.event.release.tag_name || inputs.version }}
+    secrets: inherit
+  images:
+    uses: ./.github/workflows/docker-image-build.yml
+    with:
+      version: ${{ github.event.release.tag_name || inputs.version }}
+    secrets: inherit
+  encore:
+    uses: ./.github/workflows/encore-image-build.yml
+    with:
+      version: ${{ github.event.release.tag_name || inputs.version }}
+    secrets: inherit
