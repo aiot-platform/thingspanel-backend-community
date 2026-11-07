@@ -29,3 +29,52 @@ jobs:
     with:
       version: ${{ github.event.release.tag_name || inputs.version }}
     secrets: inherit
+  deploy:
+    needs: [images, encore]
+    if: github.event_name == 'release' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure SSH
+        env:
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_PORT: ${{ secrets.DEPLOY_PORT }}
+        run: |
+          set -euo pipefail
+          test -n "$DEPLOY_SSH_KEY"
+          umask 077
+          mkdir -p ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/id_deploy
+          chmod 600 ~/.ssh/id_deploy
+          ssh-keyscan -p "${DEPLOY_PORT:-22}" -H "$DEPLOY_HOST" >> ~/.ssh/known_hosts 2>/dev/null || true
+      - name: Login ACR on server
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_PORT: ${{ secrets.DEPLOY_PORT }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          ACR_VPC_HOST: crpi-8l7h3z38ikkatd81-vpc.cn-shanghai.personal.cr.aliyuncs.com
+          ACR_USER: ${{ secrets.IMAGE_USER }}
+          ACR_PASS: ${{ secrets.IMAGE_PASS }}
+        run: |
+          set -euo pipefail
+          printf '%s' "$ACR_PASS" | ssh -i ~/.ssh/id_deploy -p "${DEPLOY_PORT:-22}" "$DEPLOY_USER@$DEPLOY_HOST" \
+            "docker login '$ACR_VPC_HOST' -u '$ACR_USER' --password-stdin"
+      - name: Update backend services
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_PORT: ${{ secrets.DEPLOY_PORT }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          VERSION: ${{ github.event.release.tag_name || inputs.version }}
+        run: |
+          set -euo pipefail
+          ssh -i ~/.ssh/id_deploy -p "${DEPLOY_PORT:-22}" "$DEPLOY_USER@$DEPLOY_HOST" "
+            set -e
+            cd /opt/thingspanel
+            sed -i 's#^TP_TAG_BACKEND=.*#TP_TAG_BACKEND=${VERSION}#' .env
+            sed -i 's#^TP_TAG_BROKER=.*#TP_TAG_BROKER=${VERSION}#' .env
+            sed -i 's#^TP_TAG_ENCORE=.*#TP_TAG_ENCORE=${VERSION}#' .env
+            docker compose pull backend automation-scheduler broker-owner mosquitto encore-api notification-core
+            docker compose up -d backend automation-scheduler broker-owner mosquitto encore-api notification-core
+            docker compose ps
+          "
