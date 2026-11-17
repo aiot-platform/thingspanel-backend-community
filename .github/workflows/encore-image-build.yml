@@ -10,9 +10,15 @@ on:
       version:
         description: Existing published release tag
         required: true
+  push:
+    branches:
+      - dev
 permissions:
   contents: write
   packages: write
+env:
+  ACR_HOST: crpi-8l7h3z38ikkatd81.cn-shanghai.personal.cr.aliyuncs.com
+  ACR: crpi-8l7h3z38ikkatd81.cn-shanghai.personal.cr.aliyuncs.com/peak-aiot
 jobs:
   build:
     runs-on: ubuntu-24.04
@@ -21,15 +27,19 @@ jobs:
       fail-fast: false
       max-parallel: 2
       matrix:
-        arch: [amd64, arm64]
+        arch: ${{ github.event_name == 'push' && fromJSON('["amd64"]') || fromJSON('["amd64","arm64"]') }}
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
       - name: Select immutable release source
+        if: github.event_name != 'push'
         env:
           REQUESTED_TAG: ${{ inputs.version }}
         run: python3 deploy/release/release.py select-tag --version "$REQUESTED_TAG"
+      - name: Set build version for branch push
+        if: github.event_name == 'push'
+        run: echo "VERSION=v1.3.0" >> "$GITHUB_ENV"
       - uses: actions/setup-go@v5
         with:
           go-version-file: encore-api/go.mod
@@ -44,16 +54,7 @@ jobs:
           echo "$RUNNER_TEMP/encore/bin" >> "$GITHUB_PATH"
       - uses: docker/login-action@v3
         with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-      - uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.repository_owner }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-      - uses: docker/login-action@v3
-        with:
-          registry: registry.cn-hangzhou.aliyuncs.com
+          registry: ${{ env.ACR_HOST }}
           username: ${{ secrets.IMAGE_USER }}
           password: ${{ secrets.IMAGE_PASS }}
       - name: Build portable native services
@@ -71,12 +72,17 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          for repository in "thingspanel/thingspanel-encore" "ghcr.io/$OWNER_LC/thingspanel-encore" "registry.cn-hangzhou.aliyuncs.com/thingspanel/thingspanel-encore"; do
+          for repository in "${ACR}/thingspanel-encore"; do
             docker tag "tp-encore:$VERSION-$TARGET_ARCH" "$repository:$VERSION-$TARGET_ARCH"
             docker push "$repository:$VERSION-$TARGET_ARCH"
+            if [ "${{ github.event_name }}" = "push" ]; then
+              docker tag "tp-encore:$VERSION-$TARGET_ARCH" "$repository:$VERSION"
+              docker push "$repository:$VERSION"
+            fi
           done
   manifests:
     needs: build
+    if: github.event_name != 'push'
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
@@ -89,16 +95,7 @@ jobs:
         run: python3 deploy/release/release.py select-tag --version "$REQUESTED_TAG"
       - uses: docker/login-action@v3
         with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-      - uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.repository_owner }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-      - uses: docker/login-action@v3
-        with:
-          registry: registry.cn-hangzhou.aliyuncs.com
+          registry: ${{ env.ACR_HOST }}
           username: ${{ secrets.IMAGE_USER }}
           password: ${{ secrets.IMAGE_PASS }}
       - uses: docker/setup-buildx-action@v3
@@ -107,7 +104,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          for repository in "thingspanel/thingspanel-encore" "ghcr.io/$OWNER_LC/thingspanel-encore" "registry.cn-hangzhou.aliyuncs.com/thingspanel/thingspanel-encore"; do
+          for repository in "${ACR}/thingspanel-encore"; do
             docker buildx imagetools create -t "$repository:$VERSION" "$repository:$VERSION-amd64" "$repository:$VERSION-arm64"
           done
           python3 deploy/release/release.py record-image --version "$VERSION" --component encore --image thingspanel-encore

@@ -47,9 +47,8 @@ def main():
             raise ValueError('Unknown release component')
         if not re.fullmatch(r'thingspanel-[a-z-]+', args.image or ''):
             raise ValueError('Invalid image repository')
-        owner = os.environ['GITHUB_REPOSITORY_OWNER'].lower()
-        names = ['docker.io/thingspanel/' + args.image, 'ghcr.io/' + owner + '/' + args.image,
-                 'registry.cn-hangzhou.aliyuncs.com/thingspanel/' + args.image]
+        registry = os.environ.get('ACR', 'registry.cn-hangzhou.aliyuncs.com/thingspanel')
+        names = [registry + '/' + args.image]
         receipt = {'component': args.component, 'version': tag, 'commit': run('git', 'rev-parse', 'HEAD'),
                    'images': [inspect_image(name + ':' + tag) for name in names]}
         target = pathlib.Path('release-records')

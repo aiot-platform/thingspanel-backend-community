@@ -10,6 +10,9 @@
 !internal/**
 !pkg/
 !pkg/**
+# All-in-One 安装器的 prepare.py 会从镜像里 docker cp 取这些迁移文件与版本号。
+!encore-api/
+!encore-api/**
 !router/
 !router/**
 !mqtt/
