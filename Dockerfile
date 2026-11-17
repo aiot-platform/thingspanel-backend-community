@@ -21,6 +21,9 @@ COPY pkg/global/global.go ./pkg/global/
 COPY encore-api/automation/migrations ./encore-api/automation/migrations
 COPY encore-api/devicemetadata/migrations ./encore-api/devicemetadata/migrations
 COPY encore-api/l3-core/notification/migrations ./encore-api/l3-core/notification/migrations
+COPY encore-api/fileassets/migrations ./encore-api/fileassets/migrations
+COPY encore-api/l3-core/connectorcatalog/migrations ./encore-api/l3-core/connectorcatalog/migrations
+COPY encore-api/marketinstall/migrations ./encore-api/marketinstall/migrations
 COPY static ./static
 COPY files/iphone-1.png files/iphone-2.png files/logo.png ./files/
 COPY configs/conf.yml configs/casbin.conf configs/messages.yaml configs/messages_str.yaml ./configs/
