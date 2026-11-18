@@ -195,3 +195,31 @@ telemetry:
   heartbeat_interval: "1h"
   state_file: "./configs/.telemetry_state.json"
 #                                    # 多实例部署时，只有一个实例设为 true，其他实例设为 false
+
+# 短信通知配置（阿里云短信）
+# 短信通道的密钥、签名、模板统一在此配置，或使用 GOTP_ 环境变量覆盖（推荐用环境变量注入密钥）：
+#   GOTP_SMS_ENABLED
+#   GOTP_SMS_PROVIDER
+#   GOTP_SMS_ALIYUN_ENDPOINT
+#   GOTP_SMS_ALIYUN_ACCESS_KEY_ID
+#   GOTP_SMS_ALIYUN_ACCESS_KEY_SECRET
+#   GOTP_SMS_ALIYUN_SIGN_NAME
+#   GOTP_SMS_ALIYUN_TEMPLATE_CODE
+#   GOTP_SMS_ALIYUN_TEMPLATE_PARAM_KEY
+sms:
+  # 是否启用短信通知；为 false 时短信通知会直接记录一条失败历史，不会真正调用短信服务
+  enabled: false
+  # 短信服务商，目前仅支持 aliyun
+  provider: aliyun
+  aliyun:
+    # 短信服务端点，一般无需修改
+    endpoint: dysmsapi.aliyuncs.com
+    # 访问密钥（建议通过环境变量注入，不要提交到仓库）
+    access_key_id: ""
+    access_key_secret: ""
+    # 已报备通过的短信签名，例如：ThingsPanel
+    sign_name: ""
+    # 已报备通过的短信模板 ID，例如：SMS_123456789
+    template_code: ""
+    # 模板中承载告警内容的变量名，模板形如“告警通知：${content}”时这里填 content
+    template_param_key: content

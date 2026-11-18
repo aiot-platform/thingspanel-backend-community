@@ -10,7 +10,8 @@ type SaveNotificationServicesConfigReq struct {
 
 const (
 	NoticeType_Email    = "EMAIL"
-	NoticeType_SME_CODE = "SME_CODE"
+	NoticeType_SME_CODE = "SME_CODE" // 短信服务配置类型（notification_services_config.notice_type）
+	NoticeType_SME      = "SME"      // 短信通知类型（通知组 notification_type / 通知历史 notification_type）
 	NoticeType_Member   = "MEMBER"
 	NoticeType_Voice    = "VOICE"
 	NoticeType_Webhook  = "WEBHOOK"

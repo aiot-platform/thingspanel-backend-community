@@ -408,6 +408,22 @@ func sendEmailMessage(message string, subject string, tenantId string, to ...str
 	return nil
 }
 
+// sendSmsMessage 发送短信通知（短信通道的密钥/签名/模板来自配置文件 conf.yml 的 sms 段）
+func sendSmsMessage(message, tenantId, phone string) (err error) {
+	nsc := &NotificationServicesConfig{}
+
+	bizId, err := SendSms(phone, message)
+	if err != nil {
+		logrus.Error("短信发送失败:", err)
+		remark := err.Error()
+		nsc.saveNotificationHistory(model.NoticeType_SME, tenantId, phone, message, "FAILURE", &remark)
+		return err
+	}
+	logrus.Info("短信发送成功:", phone, " bizId:", bizId)
+	nsc.saveNotificationHistory(model.NoticeType_SME, tenantId, phone, message, "SUCCESS", nil)
+	return nil
+}
+
 // Send notification
 func (*NotificationServicesConfig) ExecuteNotification(notificationGroupId, alertJson string) {
 	logrus.Info("开始执行通知，通知组ID:", notificationGroupId)
@@ -472,6 +488,25 @@ func (*NotificationServicesConfig) ExecuteNotification(notificationGroupId, aler
 						nsc.saveNotificationHistory(model.NoticeType_Email, notificationGroup.TenantID, emailAddr, errorContent, "FAILURE", nil)
 						logrus.Error("发送邮件失败:", err)
 					}
+				}
+			}
+
+		case model.NoticeType_SME:
+			nConfig := make(map[string]string)
+			if err := json.Unmarshal([]byte(*notificationGroup.NotificationConfig), &nConfig); err != nil {
+				logrus.Error("解析短信配置失败:", err)
+				continue
+			}
+
+			// 手机号支持多个，使用英文逗号分隔
+			phoneList := strings.Split(nConfig["SME"], ",")
+			for _, phone := range phoneList {
+				phone = strings.TrimSpace(phone)
+				if phone == "" {
+					continue
+				}
+				if err := sendSmsMessage(content, notificationGroup.TenantID, phone); err != nil {
+					logrus.Error("发送短信失败:", err)
 				}
 			}
 
