@@ -34,6 +34,9 @@ type apps struct {
 	SystemMonitor // 系统监控
 	DeviceAuth    // 设备动态认证
 	DashboardMenu
+	Pet // 宠物看护
+	Solution // 行业方案
+	CEndUser // C 端用户
 }
 
 var Model = new(apps)

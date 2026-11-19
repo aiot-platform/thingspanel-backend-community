@@ -19,6 +19,8 @@ log:
 
 jwt:
   key: 1hj5b0sp9
+  # C 端用户独立签名密钥，必须与 key 不同；建议通过环境变量 GOTP_JWT_C_SECRET 注入
+  c_secret: c1hj5b0sp9cend
 
 market:
   enabled: true

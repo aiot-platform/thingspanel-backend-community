@@ -124,6 +124,9 @@ func RouterInit() *gin.Engine {
 			v1.POST("/device/auth", controllers.DeviceAuthApi.DeviceAuth)
 			// 设备诊断（不校验权限）
 			v1.GET("/devices/:device_id/diagnostics", controllers.DeviceApi.GetDeviceDiagnostics)
+
+			// C 端用户（独立鉴权体系，必须在下方 JWT 鉴权之前挂载）
+			apps.Model.CEndUser.InitCEndUser(v1)
 		}
 
 		// 需要权限校验
@@ -156,6 +159,10 @@ func RouterInit() *gin.Engine {
 			apps.Model.Board.InitBoard(v1) // 首页
 
 			apps.Model.DashboardMenu.Init(v1) // 仪表盘菜单绑定
+
+			apps.Model.Pet.InitPet(v1) // 宠物看护
+
+			apps.Model.Solution.InitSolution(v1) // 行业方案
 
 			apps.Model.EventData.InitEventData(v1) // 事件数据
 

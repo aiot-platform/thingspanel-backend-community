@@ -19,6 +19,8 @@ log:
 
 jwt:
   key: 1hj5b0sp9
+  # C 端用户独立签名密钥，必须与 key 不同；建议通过环境变量 GOTP_JWT_C_SECRET 注入
+  c_secret: c1hj5b0sp9cend
 
 market:
   enabled: true
@@ -223,3 +225,18 @@ sms:
     template_code: ""
     # 模板中承载告警内容的变量名，模板形如“告警通知：${content}”时这里填 content
     template_param_key: content
+
+# 宠物看护面板的实时音视频配置（阿里云 ARTC）
+# AppID / AppKey 只在服务端使用，用于签发入会 Token，绝不下发到客户端；
+# 建议通过环境变量注入密钥（推荐），不要提交到仓库：
+#   GOTP_PET_RTC_APP_ID
+#   GOTP_PET_RTC_APP_KEY
+#   GOTP_PET_RTC_TOKEN_TTL_SECONDS
+pet:
+  rtc:
+    # 阿里云「视频直播 > 实时音视频 > 应用管理」中应用的 AppID
+    app_id: ""
+    # 对应应用的 AppKey
+    app_key: ""
+    # 签发 Token 的有效期（秒），默认 7200（2 小时）
+    token_ttl_seconds: 7200
