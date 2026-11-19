@@ -54,7 +54,7 @@ func (*CEndUserApi) ListDevices(c *gin.Context) {
 	c.Set("data", data)
 }
 
-// BindDevice C 端绑定设备
+// BindDevice C 端凭绑定码绑定设备
 // @Router   /api/v1/c/devices/bind [post]
 func (*CEndUserApi) BindDevice(c *gin.Context) {
 	var req model.CEndBindDeviceReq
@@ -62,11 +62,12 @@ func (*CEndUserApi) BindDevice(c *gin.Context) {
 		return
 	}
 	claims := c.MustGet("c_claims").(*utils.CUserClaims)
-	if err := service.GroupApp.CEndUser.BindDevice(claims.UserID, &req); err != nil {
+	data, err := service.GroupApp.CEndUser.BindDevice(claims.UserID, &req)
+	if err != nil {
 		c.Error(err)
 		return
 	}
-	c.Set("data", nil)
+	c.Set("data", data)
 }
 
 // UnbindDevice C 端解绑设备

@@ -32,10 +32,9 @@ type CEndLoginResp struct {
 	User      CEndUserInfo  `json:"user"`
 }
 
-// CEndBindDeviceReq C 端绑定设备
+// CEndBindDeviceReq C 端绑定设备（凭门店出码）
 type CEndBindDeviceReq struct {
-	DeviceID     string `json:"device_id" validate:"required,max=36"`
-	SolutionCode string `json:"solution_code" validate:"required,max=64"`
+	Code string `json:"code" validate:"required,max=64"`
 }
 
 // CEndDeviceItem C 端已绑定设备

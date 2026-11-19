@@ -58,9 +58,15 @@ func (c petRTCConfig) validate() error {
 	return nil
 }
 
-// GenerateRtcToken 签发指定设备的入会凭证；频道按设备维度固定，同一设备的多位主人进入同一频道
+// GenerateRtcToken 签发指定设备的入会凭证（后台用户维度）；频道按设备维度固定，同一设备的多位主人进入同一频道
 func (p *Pet) GenerateRtcToken(req *model.PetRtcTokenReq, claims *utils.UserClaims) (*model.PetRtcTokenResp, error) {
-	if err := p.checkDevice(req.DeviceID, claims.TenantID); err != nil {
+	return p.GenerateRtcTokenForDevice(claims.TenantID, req.DeviceID, claims.ID, claims.Email)
+}
+
+// GenerateRtcTokenForDevice 按租户 / 设备 / 入会用户签发凭证。
+// 供后台用户（actions.Pet）与 C 端用户（租户由绑定关系推导）复用。
+func (p *Pet) GenerateRtcTokenForDevice(tenantID, deviceID, userID, userName string) (*model.PetRtcTokenResp, error) {
+	if err := p.checkDevice(deviceID, tenantID); err != nil {
 		return nil, err
 	}
 
@@ -70,8 +76,7 @@ func (p *Pet) GenerateRtcToken(req *model.PetRtcTokenReq, claims *utils.UserClai
 		return nil, err
 	}
 
-	channelID := petRTCChannelPrefix + req.DeviceID
-	userID := claims.ID
+	channelID := petRTCChannelPrefix + deviceID
 	nonce := ""
 	timestamp := time.Now().Unix() + cfg.TTLSeconds
 
@@ -85,7 +90,7 @@ func (p *Pet) GenerateRtcToken(req *model.PetRtcTokenReq, claims *utils.UserClai
 		AppID:     cfg.AppID,
 		ChannelID: channelID,
 		UserID:    userID,
-		UserName:  claims.Email,
+		UserName:  userName,
 		Token:     base64Token,
 		ExpiresAt: timestamp,
 	}, nil

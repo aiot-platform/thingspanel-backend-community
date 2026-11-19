@@ -52,9 +52,12 @@ type Controller struct {
 	DeviceAuthApi // 设备动态认证
 	DeviceTopicMappingApi
 	DashboardMenuApi
-	PetApi // 宠物看护
+	PetApi      // 宠物看护
 	SolutionApi // 行业方案
 	CEndUserApi // C 端用户
+	CPetApi     // C 端宠物看护
+	BindCodeApi // 门店绑定码
+	TenantApi   // 租户层级
 }
 
 var (

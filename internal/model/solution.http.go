@@ -20,6 +20,7 @@ type TenantSolutionAssignReq struct {
 	TenantID     string `json:"tenant_id" validate:"required,max=36"`
 	SolutionCode string `json:"solution_code" validate:"required,max=64"`
 	Enabled      int16  `json:"enabled" validate:"omitempty,oneof=0 1"`
+	Cascade      bool   `json:"cascade"` // 是否沿租户层级下放给全部下级租户
 }
 
 // TenantSolutionQueryReq 查询某租户已分配方案

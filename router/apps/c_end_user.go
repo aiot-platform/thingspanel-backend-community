@@ -25,6 +25,15 @@ func (*CEndUser) InitCEndUser(Router *gin.RouterGroup) {
 			auth.GET("devices", api.Controllers.CEndUserApi.ListDevices)
 			auth.POST("devices/bind", api.Controllers.CEndUserApi.BindDevice)
 			auth.DELETE("devices/:device_id", api.Controllers.CEndUserApi.UnbindDevice)
+
+			// 宠物看护（按宠物组织：列表 → 面板）
+			auth.GET("pets", api.Controllers.CPetApi.ListPets)
+			auth.GET("pets/:device_id/profile", api.Controllers.CPetApi.GetProfile)
+			auth.GET("pets/:device_id/daily-report", api.Controllers.CPetApi.GetDailyReport)
+			auth.GET("pets/:device_id/staff-notes", api.Controllers.CPetApi.ListStaffNotes)
+			auth.GET("pets/:device_id/timeline", api.Controllers.CPetApi.ListTimeline)
+			auth.GET("pets/:device_id/album", api.Controllers.CPetApi.ListAlbum)
+			auth.POST("pets/:device_id/rtc/token", api.Controllers.CPetApi.GenerateRtcToken)
 		}
 	}
 }

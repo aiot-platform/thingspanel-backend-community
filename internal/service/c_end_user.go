@@ -144,17 +144,45 @@ func (*CEndUser) ListDevices(cUserID string) ([]*model.CEndDeviceItem, error) {
 	return result, nil
 }
 
-// BindDevice C 端用户绑定设备（多对多，一台设备可被多人共享）
-func (*CEndUser) BindDevice(cUserID string, req *model.CEndBindDeviceReq) error {
-	device, err := dal.GetDeviceByID(req.DeviceID)
-	if err != nil || device == nil {
-		return errcode.WithData(errcode.CodeParamError, map[string]interface{}{
-			"device_id": "device not found",
+// BindDevice C 端用户凭门店绑定码绑定设备（多对多，一台设备可被多人共享）。
+// 校验绑定码有效性（状态 / 有效期 / 剩余次数）与门店归属，成功后累加已用次数。
+func (*CEndUser) BindDevice(cUserID string, req *model.CEndBindDeviceReq) (*model.CEndDeviceItem, error) {
+	code, err := dal.GetDeviceBindCodeByCode(req.Code)
+	if err != nil || code == nil {
+		return nil, errcode.WithData(errcode.CodeParamError, map[string]interface{}{
+			"code": "bind code not found",
+		})
+	}
+	if code.Status != 1 {
+		return nil, errcode.WithData(errcode.CodeParamError, map[string]interface{}{
+			"code": "bind code is disabled",
+		})
+	}
+	if code.ExpiresAt != nil && code.ExpiresAt.Before(time.Now().UTC()) {
+		return nil, errcode.WithData(errcode.CodeParamError, map[string]interface{}{
+			"code": "bind code has expired",
+		})
+	}
+	if code.UsedCount >= code.MaxUses {
+		return nil, errcode.WithData(errcode.CodeParamError, map[string]interface{}{
+			"code": "bind code has reached its usage limit",
 		})
 	}
 
-	if exist, err := dal.GetCEndUserDevice(cUserID, req.DeviceID); err == nil && exist != nil {
-		return errcode.WithData(errcode.CodeParamError, map[string]interface{}{
+	device, err := dal.GetDeviceByID(code.DeviceID)
+	if err != nil || device == nil {
+		return nil, errcode.WithData(errcode.CodeParamError, map[string]interface{}{
+			"device_id": "device not found",
+		})
+	}
+	if device.TenantID != code.TenantID {
+		return nil, errcode.WithData(errcode.CodeParamError, map[string]interface{}{
+			"device_id": "device no longer belongs to the issuing tenant",
+		})
+	}
+
+	if exist, err := dal.GetCEndUserDevice(cUserID, code.DeviceID); err == nil && exist != nil {
+		return nil, errcode.WithData(errcode.CodeParamError, map[string]interface{}{
 			"device_id": "device already bound by current user",
 		})
 	}
@@ -162,19 +190,49 @@ func (*CEndUser) BindDevice(cUserID string, req *model.CEndBindDeviceReq) error 
 	item := &model.CEndUserDevice{
 		ID:           uuid.New(),
 		CUserID:      cUserID,
-		DeviceID:     req.DeviceID,
-		TenantID:     device.TenantID,
-		SolutionCode: req.SolutionCode,
+		DeviceID:     code.DeviceID,
+		TenantID:     code.TenantID,
+		SolutionCode: resolveTenantSolution(code.TenantID),
 		Status:       1,
 	}
 	if err := dal.CreateCEndUserDevice(item); err != nil {
 		logrus.Error("C 端绑定设备失败:", err)
-		return errcode.WithData(errcode.CodeDBError, map[string]interface{}{
+		return nil, errcode.WithData(errcode.CodeDBError, map[string]interface{}{
 			"operation": "bind_c_end_device",
 			"error":     err.Error(),
 		})
 	}
-	return nil
+	if err := dal.IncrementBindCodeUsed(code.ID); err != nil {
+		// 绑定已成功，累加失败仅记录日志，不阻断
+		logrus.Error("累加绑定码已用次数失败:", err)
+	}
+
+	return &model.CEndDeviceItem{
+		DeviceID:     code.DeviceID,
+		DeviceNumber: device.DeviceNumber,
+		DeviceName:   stringValue(device.Name),
+		SolutionCode: item.SolutionCode,
+		TenantID:     code.TenantID,
+		BoundAt:      item.BoundAt.Format(time.RFC3339),
+	}, nil
+}
+
+// resolveTenantSolution 推导租户用于 C 端绑定的方案编码：优先宠物医疗，其次任一启用方案。
+func resolveTenantSolution(tenantID string) string {
+	list, err := dal.ListTenantSolutions(tenantID)
+	if err == nil {
+		for _, ts := range list {
+			if ts.Enabled == 1 && ts.SolutionCode == model.SolutionCodePetMedical {
+				return ts.SolutionCode
+			}
+		}
+		for _, ts := range list {
+			if ts.Enabled == 1 {
+				return ts.SolutionCode
+			}
+		}
+	}
+	return model.SolutionCodePetMedical
 }
 
 // UnbindDevice C 端用户解绑设备

@@ -37,6 +37,8 @@ type apps struct {
 	Pet // 宠物看护
 	Solution // 行业方案
 	CEndUser // C 端用户
+	BindCode // 门店绑定码
+	Tenant   // 租户层级
 }
 
 var Model = new(apps)

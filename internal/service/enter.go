@@ -55,6 +55,9 @@ type ServiceGroup struct {
 	Pet
 	Solution
 	CEndUser
+	CPet
+	BindCode
+	Tenant
 }
 
 var GroupApp = new(ServiceGroup)

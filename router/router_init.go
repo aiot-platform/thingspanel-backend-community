@@ -164,6 +164,10 @@ func RouterInit() *gin.Engine {
 
 			apps.Model.Solution.InitSolution(v1) // 行业方案
 
+			apps.Model.BindCode.InitBindCode(v1) // 门店绑定码
+
+			apps.Model.Tenant.InitTenant(v1) // 租户层级
+
 			apps.Model.EventData.InitEventData(v1) // 事件数据
 
 			apps.Model.TelemetryData.InitTelemetryData(v1) // 遥测数据

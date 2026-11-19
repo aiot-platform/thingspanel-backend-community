@@ -97,7 +97,7 @@ func (*Solution) DeleteIndustrySolution(id string) error {
 	return nil
 }
 
-// Assign 给租户分配方案（或调整启用状态）
+// Assign 给租户分配方案（或调整启用状态）；Cascade 为真时沿租户层级下放给全部下级
 func (*Solution) Assign(req *model.TenantSolutionAssignReq) error {
 	sol, err := dal.GetIndustrySolutionByCode(req.SolutionCode)
 	if err != nil || sol == nil {
@@ -105,18 +105,36 @@ func (*Solution) Assign(req *model.TenantSolutionAssignReq) error {
 			"solution_code": "industry solution not found",
 		})
 	}
-	item := &model.TenantSolution{
-		ID:           uuid.New(),
-		TenantID:     req.TenantID,
-		SolutionCode: req.SolutionCode,
-		Enabled:      req.Enabled,
+
+	targets := []string{req.TenantID}
+	if req.Cascade {
+		ids, err := dal.ListDescendantTenantIDs(req.TenantID)
+		if err != nil {
+			logrus.Error("查询下级租户失败:", err)
+			return errcode.WithData(errcode.CodeDBError, map[string]interface{}{
+				"operation": "list_descendant_tenants",
+				"error":     err.Error(),
+			})
+		}
+		if len(ids) > 0 {
+			targets = ids
+		}
 	}
-	if err := dal.UpsertTenantSolution(item); err != nil {
-		logrus.Error("分配方案给租户失败:", err)
-		return errcode.WithData(errcode.CodeDBError, map[string]interface{}{
-			"operation": "assign_tenant_solution",
-			"error":     err.Error(),
-		})
+
+	for _, tenantID := range targets {
+		item := &model.TenantSolution{
+			ID:           uuid.New(),
+			TenantID:     tenantID,
+			SolutionCode: req.SolutionCode,
+			Enabled:      req.Enabled,
+		}
+		if err := dal.UpsertTenantSolution(item); err != nil {
+			logrus.Error("分配方案给租户失败:", err)
+			return errcode.WithData(errcode.CodeDBError, map[string]interface{}{
+				"operation": "assign_tenant_solution",
+				"error":     err.Error(),
+			})
+		}
 	}
 	return nil
 }
