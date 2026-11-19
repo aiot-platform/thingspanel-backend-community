@@ -1,7 +1,9 @@
 -- ============================================================================
 -- 23.sql 宠物看护（Pet Care）能力
 --   1. 宠物业务表：档案 / 店铺 / 店员留言 / 动态时间线 / 相册 / 日报
---   2. 设备物模型模板：宠物店音视频看护设备（14 属性 / 4 事件 / 4 服务）
+--   2. 设备物模型模板：宠物店音视频看护设备（18 属性 / 7 事件 / 4 服务）
+--      其中 4 个只读属性来自宠物项圈（穿戴设备），经边缘网关统一上报，
+--      与音视频共用同一台设备、同一套物模型。
 --   3. 前端菜单：宠物看护（宠物档案 / 店员留言 / 相册时间线）
 -- 全部语句幂等，可重复执行。
 -- 说明：device_templates 按租户隔离（tenant_id NOT NULL），物模型种子按执行时
@@ -114,7 +116,7 @@ INSERT INTO public.device_templates (
 	tenant_id, created_at, updated_at, flag, "label"
 )
 SELECT (md5('pet-tpl-' || u.tenant_id)::uuid)::text,
-	'宠物店音视频看护设备', 'ThingsPanel', '1.1.0', '14 属性 / 4 事件 / 4 服务',
+	'宠物店音视频看护设备', 'ThingsPanel', '1.1.0', '18 属性 / 7 事件 / 4 服务',
 	u.tenant_id, now(), now(), 1, 'pet'
 FROM (
 	SELECT DISTINCT tenant_id FROM public.users
@@ -154,7 +156,15 @@ CROSS JOIN (
 	('舍内湿度', 'env_humidity', 'Number', '%', '宠物活动区域相对湿度',
 	 '{"min":0,"max":100,"step":1}'),
 	('今日剩余零食次数', 'treat_left', 'Number', '次', '今日还可投喂的次数，由店铺设定上限',
-	 '{"min":0,"max":10,"step":1}')
+	 '{"min":0,"max":10,"step":1}'),
+	('项圈在线状态', 'collar_online', 'Boolean', '', '项圈与边缘网关的链路状态。0 离线；1 在线',
+	 '[]'),
+	('项圈电量', 'collar_battery', 'Number', '%', '项圈电池剩余电量',
+	 '{"min":0,"max":100,"step":1}'),
+	('宠物体温', 'pet_body_temperature', 'Number', '℃', '项圈贴体测得的宠物体温，一位小数',
+	 '{"min":30,"max":45,"step":0.1}'),
+	('宠物心率', 'pet_heart_rate', 'Number', 'bpm', '项圈光电容积脉搏波测得的宠物心率',
+	 '{"min":0,"max":250,"step":1}')
 ) AS m(data_name, data_identifier, data_type, unit, description, additional_info)
 ON CONFLICT (device_template_id, data_identifier) DO NOTHING;
 
@@ -212,7 +222,15 @@ CROSS JOIN (
 	 'INFO 级别。识别到持续吠叫时上报，仅提醒'),
 	('舍内环境异常', 'env_abnormal',
 	 '[{"id":1,"data_name":"异常类型","data_identifier":"abnormal_type","read_write_flag":"String","description":"0 温度过高；1 温度过低；2 湿度异常"},{"id":2,"data_name":"当前值","data_identifier":"value","read_write_flag":"Number","description":"异常指标当前值"}]',
-	 'WARN 级别。温湿度超出舒适范围时上报，回到范围内后解除')
+	 'WARN 级别。温湿度超出舒适范围时上报，回到范围内后解除'),
+	('项圈电量低', 'collar_low_battery',
+	 '[{"id":1,"data_name":"剩余电量","data_identifier":"battery","read_write_flag":"Number","description":"剩余电量百分比 0~100"}]',
+	 'WARN 级别。项圈电量低于阈值时上报，提醒店员充电'),
+	('项圈离线', 'collar_offline', '[]',
+	 'WARN 级别。项圈与边缘网关断连超时上报，collar_online 同步为离线'),
+	('宠物生理指标异常', 'pet_health_abnormal',
+	 '[{"id":1,"data_name":"异常类型","data_identifier":"type","read_write_flag":"String","description":"0 体温过高；1 体温过低；2 心率过快；3 心率过慢"},{"id":2,"data_name":"当前值","data_identifier":"value","read_write_flag":"Number","description":"异常指标当前值"}]',
+	 'WARN 级别。项圈测得体温或心率超出正常范围时上报，回到范围内后解除')
 ) AS m(data_name, data_identifier, params, description)
 ON CONFLICT (device_template_id, data_identifier) DO NOTHING;
 
