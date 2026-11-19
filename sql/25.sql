@@ -5,6 +5,7 @@
 --      叠加层，补充 parent_id（经销商→宠物医院→门店）等层级信息，并从既有
 --      TENANT_ADMIN 用户回填，保证老数据可用。
 --   2. public.device_bind_codes：门店出码（绑定码/二维码），家长凭码绑定设备。
+--   3. 前端菜单种子：绑定码管理（门店）、租户层级（行业方案下）。
 -- 全部语句幂等，可重复执行。
 -- ============================================================================
 
@@ -53,3 +54,17 @@ COMMENT ON TABLE public.device_bind_codes IS '设备绑定码（门店出码，�
 CREATE UNIQUE INDEX IF NOT EXISTS device_bind_codes_code_un ON public.device_bind_codes (code);
 CREATE INDEX IF NOT EXISTS idx_device_bind_codes_tenant ON public.device_bind_codes (tenant_id);
 CREATE INDEX IF NOT EXISTS idx_device_bind_codes_device ON public.device_bind_codes (device_id);
+
+-- ---------------------------------------------------------------------------
+-- 3. 前端菜单：绑定码管理（门店）+ 租户层级（行业方案下）
+--    父菜单 id 复用 23.sql（宠物看护）/ 24.sql（行业方案）已建节点。
+-- ---------------------------------------------------------------------------
+INSERT INTO public.sys_ui_elements (
+	id, parent_id, element_code, element_type, orders, param1, param2, param3,
+	authority, description, created_at, remark, multilingual, route_path
+) VALUES
+('7c9f0a10-1b21-4c31-9d41-000000000005', '7c9f0a10-1b21-4c31-9d41-000000000001', 'pet_bind-code', 3, 1164, '/pet/bind-code', 'mdi:qrcode', '0',
+ '["TENANT_ADMIN","SYS_ADMIN"]'::json, '绑定码管理', now(), '', 'route.pet_bind-code', 'view.pet_bind-code'),
+('7c9f0a20-2c32-4d42-9e52-000000000003', '7c9f0a20-2c32-4d42-9e52-000000000001', 'industry-solution_tenant', 3, 1182, '/industry-solution/tenant', 'mdi:sitemap-outline', '0',
+ '["SYS_ADMIN","TENANT_ADMIN"]'::json, '租户层级', now(), '', 'route.industry-solution_tenant', 'view.industry-solution_tenant')
+ON CONFLICT (id) DO NOTHING;
